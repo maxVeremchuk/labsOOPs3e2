@@ -2,13 +2,18 @@ package com.webbank.dao;
 
 import com.webbank.model.Account;
 import com.webbank.model.Card;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.CrudRepository;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
-public interface AccountDao {
+@Repository
+@Transactional
+public interface AccountDao extends CrudRepository<Account, Integer> {
+    @Query("SELECT a FROM Account a JOIN Card c ON c.accountId=a.id")
     Account getAccount(Card card);
-    void update(Account account);
-    void save(Account account);
-    void delete(Account account);
-    List<Account> getAccounts(List<Card> cards);
+
 }

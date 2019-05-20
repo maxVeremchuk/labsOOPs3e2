@@ -17,9 +17,6 @@ import java.util.List;
 @Service("customUserDetailsService")
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-    //@Autowired
-    //private UserDetailsDaoImpl userDetailsDao;
-
     @Autowired
     private UserService userService;
 

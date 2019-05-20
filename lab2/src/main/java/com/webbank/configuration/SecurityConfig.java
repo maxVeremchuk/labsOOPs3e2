@@ -15,8 +15,6 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
-import com.webbank.service.UserDetailsServiceImpl;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
@@ -32,43 +30,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	@Autowired
     @Qualifier("customUserDetailsService")
 	private UserDetailsService userDetailsService;
-	//@Autowired
-	//UserDetailsService userDetailsService;
-	//@Autowired
-	//private PersistentTokenRepository tokenRepository;
 	@Autowired
 	DataSource dataSource;
 	@Autowired
 	PersistentTokenRepository tokenRepository;
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
-		/*http.authorizeRequests()//.antMatchers("/", "/list")
-				//.access("hasRole('USER') or hasRole('ADMIN')")
-				//.antMatchers("/newuser/**", "/delete-user-*")
-				//.access("hasRole('ADMIN')")
-				//.antMatchers("/edit-user-*")
-				//.access("hasRole('ADMIN')")
-                .antMatchers("/login**", "newUser").permitAll()
-				//.anyRequest().authenticated()
-				.and().formLogin().loginPage("/login")
-				.failureUrl("/login?error")
-				.loginProcessingUrl("/login").permitAll().usernameParameter("username").passwordParameter("password")
-                .defaultSuccessUrl("/userPage")
-				.and().logout().logoutSuccessUrl("/login?logout")
-				.and().rememberMe().rememberMeParameter("remember-me").tokenRepository(persistentTokenRepository())
-				.tokenValiditySeconds(86400)
-				.and().csrf().and().exceptionHandling().accessDeniedPage("/Access_Denied");*/
-		/*http
-				.authorizeRequests()
-				.antMatchers("/resources/**", "/registration", "/login", "newUser").permitAll()
-				//.anyRequest().authenticated()
-				.and()
-				.formLogin()
-				.loginPage("/login")
-				.permitAll()
-				.and()
-				.logout()
-				.permitAll();*/
+
 		http
 				.authorizeRequests()
 				.antMatchers(

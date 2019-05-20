@@ -2,10 +2,15 @@ package com.webbank.dao;
 
 import com.webbank.model.Bank;
 import com.webbank.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
-public interface BankDao {
-    void update(Bank bank);
-    void save(Bank bank);
-    void delete(Bank bank);
-    Bank getBank(User user);
+@Repository
+@Transactional
+public interface BankDao extends JpaRepository<Bank, Integer> {
+
+    @Query("select bank from Bank bank join bank.admins admins where admins.id = ?1")
+    Bank getBank(int id);
 }

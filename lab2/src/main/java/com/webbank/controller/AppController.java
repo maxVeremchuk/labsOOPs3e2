@@ -1,12 +1,9 @@
 package com.webbank.controller;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
-
-
-import com.webbank.command.Command;
-import com.webbank.command.factory.CommandFactory;
-import com.webbank.command.factory.CommandFactoryImpl;
 import com.webbank.model.*;
 import com.webbank.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,27 +34,18 @@ import javax.validation.Valid;
 @ComponentScan("com.webbank")
 public class AppController {
    @Autowired
-   UserService userService;
+   private UserService userService;
    @Autowired
-   UserProfileServiceImpl userProfileService;
+   private UserProfileServiceImpl userProfileService;
    @Autowired
-   MessageSource messageSource;
+   private MessageSource messageSource;
    @Autowired
-   SecurityService securityService;
+   private AuthenticationTrustResolver authenticationTrustResolver;
    @Autowired
-   PersistentTokenBasedRememberMeServices persistentTokenBasedRememberMeServices;
-   @Autowired
-   AuthenticationTrustResolver authenticationTrustResolver;
-   @Autowired
-   BusinessService businessService;
-
+   private BusinessServiceImpl businessService;
 
    @GetMapping(value = { "/", "/userPage" })
-   public String userPage(HttpServletRequest request, ModelMap model) {
-
-       //model.addAttribute("warning", "");
-       //model.addAttribute("topup", "");
-
+   public String userPage(HttpServletRequest request) {
        String username = getPrincipal();
        User user = userService.findByUsername(username);
        for(UserProfile profile : user.getUserProfiles()){
@@ -65,7 +53,6 @@ public class AppController {
                return "redirect:/adminPage";
            }
        }
-
        request.getSession().setAttribute("loggedinuser", username);
        request.getSession().setAttribute("User", user);
        List<Card> cards = businessService.getUsersCards(user);
@@ -80,7 +67,7 @@ public class AppController {
        List<String> payments = new ArrayList<>();
        for(Payment payment : businessService.getPayments(user)) {
            payments.add("ID: " + payment.getId() + ". Info: " + payment.getInfo() +
-                   ". Spended money: " + payment.getMoney() + ". Card: " + payment.getCard());
+                   ". Spended money: " + payment.getMoney() + ". Card: " + payment.getCard() + ". Date: " + payment.getDate());
        }
        request.getSession().setAttribute("payments", payments);
 
@@ -106,14 +93,11 @@ public class AppController {
     public String newUser(ModelMap model) {
         User user = new User();
         model.addAttribute("user", user);
-       // model.addAttribute("edit", false);
-       // model.addAttribute("loggedinuser", getPrincipal());
         return "registration";
     }
 
     @PostMapping(value = { "/newuser" })
-    public String saveUser(@Valid User user, BindingResult result,
-                           ModelMap model) {
+    public String saveUser(@Valid User user, BindingResult result) {
 
         if (result.hasErrors()) {
             return "registration";
@@ -128,35 +112,16 @@ public class AppController {
         Set<UserProfile> roles = new HashSet<>();
         roles.add(userProfile);
         user.setUserProfiles(roles);
-        String password = user.getPassword();
+        //String password = user.getPassword();
         userService.saveUser(user);
-        securityService.autologin(user.getUsername(), password);
-        return "redirect:/userPage";
+        //securityService.autologin(user.getUsername(), password);
+        //return "redirect:/userPage";
+        return "login";
     }
 
-    @GetMapping(value = "/Access_Denied")
-    public String accessDeniedPage(ModelMap model) {
-        model.addAttribute("loggedinuser", getPrincipal());
-        return "accessDenied";
-    }
     @GetMapping(value = "/login")
-    public String login(@RequestParam(value = "error", required = false) String error,
-                        @RequestParam(value = "logout", required = false) String logout,
-                        HttpServletRequest request, ModelAndView model) {
-       // ModelAndView model = new ModelAndView();
+    public String login() {
          if (isCurrentAuthenticationAnonymous()) {
-            /*if (error != null) {
-                model.addObject("error", "Invalid username and password!");
-                String targetUrl = getRememberMeTargetUrlFromSession(request);
-                System.out.println(targetUrl);
-                if(StringUtils.hasText(targetUrl)){
-                    model.addObject("targetUrl", targetUrl);
-                    model.addObject("loginUpdate", true);
-                }
-            }
-            if (logout != null) {
-                model.addObject("msg", "You've been logged out successfully.");
-            }*/
             return "login";
         } else {
              String username = getPrincipal();
@@ -171,16 +136,14 @@ public class AppController {
 
     }
     @GetMapping(value="/logout")
-    public String logoutPage (HttpServletRequest request, HttpServletResponse response){
+    public String logoutPage (){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null){
-            //new SecurityContextLogoutHandler().logout(request, response, auth);
-            //persistentTokenBasedRememberMeServices.logout(request, response, auth);
             SecurityContextHolder.getContext().setAuthentication(null);
         }
         return "redirect:/login?logout";
     }
-    //@PostMapping(value="/")
+
     public String getPrincipal(){
         String userName = null;
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -193,19 +156,46 @@ public class AppController {
     }
 
     @PostMapping(value="/operation")
-    private String makeOperation(HttpServletRequest request, ModelMap model) {
+    private String makeOperation(HttpServletRequest request, ModelMap model) throws IOException {
         String commandName = request.getParameter("command");
-        //model.addAttribute("warning", "");
-        //model.addAttribute("topup", "");
         if (commandName == null) {
             model.addAttribute("warning", "wrong command");
         } else {
-            CommandFactory factory = CommandFactoryImpl.getFactory();
-            Command command = factory.getCommand(commandName, request, model, businessService);
-            try {
-                command.execute();
-            } catch (ServletException | IOException e) {
-                e.printStackTrace();
+            Map<Card, Account> cardAccountMap =  (Map<Card, Account>)request.getSession().getAttribute("cardAccountMap");
+            if (commandName.equals("Block")) {
+                int cardNumber = Integer.valueOf(request.getParameter("card"));
+                businessService.blockCommand(cardAccountMap, cardNumber, model);
+            }
+            else if (commandName.equals("TopUp")){
+                int money = Integer.valueOf(request.getParameter("money"));
+                int cardNumber = Integer.valueOf(request.getParameter("card"));
+                businessService.topUpCommand(cardAccountMap, money, cardNumber, model);
+            }
+            else if(commandName.equals("Pay")){
+                int money = Integer.valueOf(request.getParameter("money"));
+                String info = request.getParameter("info");
+                int cardNumber = Integer.valueOf(request.getParameter("card"));
+                List<String> payments = (List<String>) request.getSession().getAttribute("payments");
+                User user = (User)request.getSession().getAttribute("User");
+                businessService.payCommand(cardAccountMap, payments, user, money, info, cardNumber, model);
+            }
+            else if (commandName.equals("Unblock")){
+                int cardNumber = Integer.valueOf(request.getParameter("card"));
+                List<Card> blockedCards = (List<Card>)request.getSession().getAttribute("blockedCards");
+                businessService.unblockCommand(cardNumber, blockedCards);
+            }
+            else if (commandName.equals("Date")){
+                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                Date dateFrom = null;
+                Date dateTo = null;
+                try {
+                    dateFrom = simpleDateFormat.parse(request.getParameter("dateFrom"));
+                    dateTo = simpleDateFormat.parse(request.getParameter("dateTo"));
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+                int cardNumber = Integer.valueOf(request.getParameter("card"));
+                businessService.dateCommand(dateFrom, dateTo, cardNumber, model);
             }
         }
         String username = getPrincipal();
@@ -217,29 +207,6 @@ public class AppController {
         }
         return "userPage";
     }
-   /* private boolean isAdmin(){
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        if (principal instanceof UserDetails) {
-            Collection<SimpleGrantedAuthority> authorities = (Collection<SimpleGrantedAuthority>)((UserDetails)principal).getAuthorities();
-
-            for(SimpleGrantedAuthority item : authorities){
-                if(item.getAuthority().equals("ROLE_ADMIN")){
-                    return true;
-                }
-            }
-        }
-        return false;
-    }*/
-   private String getRememberMeTargetUrlFromSession(HttpServletRequest request){
-       String targetUrl = "";
-       HttpSession session = request.getSession(false);
-       if(session!=null){
-           targetUrl = session.getAttribute("targetUrl")==null?""
-                   :session.getAttribute("targetUrl").toString();
-       }
-       return targetUrl;
-   }
     private boolean isCurrentAuthenticationAnonymous() {
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authenticationTrustResolver.isAnonymous(authentication);

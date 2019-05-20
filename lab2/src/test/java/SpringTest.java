@@ -1,5 +1,9 @@
 import com.webbank.configuration.AppConfig;
 import com.webbank.controller.AppController;
+import com.webbank.dao.AccountDao;
+import com.webbank.dao.BankDao;
+import com.webbank.dao.CardDao;
+import com.webbank.dao.PaymentDao;
 import com.webbank.model.Account;
 import com.webbank.model.Card;
 import com.webbank.model.User;
@@ -23,6 +27,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,6 +44,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = { AppConfig.class })
 @WebAppConfiguration
@@ -52,15 +58,17 @@ public class SpringTest {
     @Mock
     UserProfileServiceImpl userProfileService;
     @Mock
-    SecurityService securityService;
+    SecurityServiceImpl securityService;
     @Mock
     AuthenticationTrustResolver authenticationTrustResolver;
     @Mock
     HttpServletRequest request;
     @Mock
     ModelMap model;
-    @Mock
-    BusinessService businessService;
+    @Spy
+    BusinessServiceImpl businessService;
+
+
 
     @Spy
     @InjectMocks
@@ -74,6 +82,10 @@ public class SpringTest {
                 .standaloneSetup(userController)
                 .build();
 
+        ReflectionTestUtils.setField(businessService, "accountDao", mock(AccountDao.class));
+        ReflectionTestUtils.setField(businessService, "cardDao", mock(CardDao.class));
+        ReflectionTestUtils.setField(businessService, "paymentDao", mock(PaymentDao.class));
+        ReflectionTestUtils.setField(businessService, "bankDao", mock(BankDao.class));
     }
     public void setSecurityContext(String role){
         UserProfile userProfile = new UserProfile();
@@ -107,8 +119,7 @@ public class SpringTest {
                                 .param("username", "xyz")
                                 .param("password", "xyz")
                 )
-                .andExpect(redirectedUrl("/userPage"))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(status().isOk());
         //userService.deleteUserById(userService.findByUsername("xyz").getId());
     }
     @Test
@@ -165,7 +176,6 @@ public class SpringTest {
         account.setMoneyAmount(1);
         cardAccountMap.put(card, account);
         MockHttpSession session = mock(MockHttpSession.class);
-        //when(request.getSession()).thenReturn(session);
         when(session.getAttribute("cardAccountMap")).thenReturn(cardAccountMap);
         this.mockMvc
                 .perform(
@@ -179,7 +189,6 @@ public class SpringTest {
                 )
                 .andExpect(model().attribute("warning", "Warning: not enough money"))
                 .andExpect(status().isOk());
-
     }
     @Test
     public void PayBlockedCard() throws Exception {
@@ -191,9 +200,7 @@ public class SpringTest {
         account.setMoneyAmount(10);
         cardAccountMap.put(card, account);
         MockHttpSession session = mock(MockHttpSession.class);
-        //when(request.getSession()).thenReturn(session);
         when(session.getAttribute("cardAccountMap")).thenReturn(cardAccountMap);
-        //when(businessService.blockAccount(account, true));
         this.mockMvc
                 .perform(
                         post("/operation")
@@ -216,7 +223,6 @@ public class SpringTest {
                 )
                 .andExpect(model().attribute("warning", "Warning: Account is blocked"))
                 .andExpect(status().isOk());
-
     }
     @Test
     public void PaySuccess() throws Exception {
@@ -228,13 +234,12 @@ public class SpringTest {
         account.setMoneyAmount(10);
         cardAccountMap.put(card, account);
         MockHttpSession session = mock(MockHttpSession.class);
-        //when(request.getSession()).thenReturn(session);
         when(session.getAttribute("cardAccountMap")).thenReturn(cardAccountMap);
         User user = new User();
         user.setUsername("xyz");
         user.setId(1);
         when(session.getAttribute("User")).thenReturn(user);
-        //when(businessService.blockAccount(account, true));
+        when(session.getAttribute("cardAccountMap")).thenReturn(cardAccountMap);
         this.mockMvc
                 .perform(
                         post("/operation")
@@ -247,7 +252,6 @@ public class SpringTest {
                 )
                 .andExpect(model().attribute("testPayment", "info 1 9 123"))
                 .andExpect(status().isOk());
-
     }
     @Test
     public void TopUpBlockedCard() throws Exception {
@@ -259,9 +263,7 @@ public class SpringTest {
         account.setMoneyAmount(10);
         cardAccountMap.put(card, account);
         MockHttpSession session = mock(MockHttpSession.class);
-        //when(request.getSession()).thenReturn(session);
         when(session.getAttribute("cardAccountMap")).thenReturn(cardAccountMap);
-        //when(businessService.blockAccount(account, true));
         this.mockMvc
                 .perform(
                         post("/operation")
@@ -284,7 +286,6 @@ public class SpringTest {
                 )
                 .andExpect(model().attribute("warning", "Warning: Account is blocked"))
                 .andExpect(status().isOk());
-
     }
     @Test
     public void TopUpSuccess() throws Exception {
@@ -296,13 +297,11 @@ public class SpringTest {
         account.setMoneyAmount(10);
         cardAccountMap.put(card, account);
         MockHttpSession session = mock(MockHttpSession.class);
-        //when(request.getSession()).thenReturn(session);
         when(session.getAttribute("cardAccountMap")).thenReturn(cardAccountMap);
         User user = new User();
         user.setUsername("xyz");
         user.setId(1);
         when(session.getAttribute("User")).thenReturn(user);
-        //when(businessService.blockAccount(account, true));
         this.mockMvc
                 .perform(
                         post("/operation")

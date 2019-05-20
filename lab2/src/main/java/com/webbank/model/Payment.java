@@ -1,6 +1,7 @@
 package com.webbank.model;
 
 import javax.persistence.*;
+import java.util.Date;
 
 @Entity
 @Table(name = "PAYMENTS")
@@ -16,6 +17,8 @@ public class Payment {
     private int cardNumber;
     @Column(name = "INFO")
     private String info;
+    @Temporal(TemporalType.DATE)
+    private Date date;
 
     public void setId(int id){this.id = id;}
     public int getId(){return id;}
@@ -27,4 +30,6 @@ public class Payment {
     public int getCard(){return cardNumber;}
     public void setInfo(String info){this.info = info;}
     public String getInfo(){return info;}
+    public void setDate(Date date){ this.date = date;}
+    public Date getDate(){ return date;}
 }

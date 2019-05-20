@@ -34,16 +34,5 @@ public class ClientServlet extends HttpServlet{
         command.execute();
 
 
-        /*int money = Integer.valueOf(req.getParameter("money"));
-        String info = req.getParameter("info");
-        String cardNumber = req.getParameter("card");
-        HttpSession session = req.getSession();
-        List<String> payments = new ArrayList<>();
-        if(session.getAttribute("Payments") != null) {
-            payments = (List<String>) session.getAttribute("Payments");
-        }
-        payments.add(info +  " " + money + " " + cardNumber);
-        session.setAttribute("Payments", payments);
-        req.getRequestDispatcher("client.jsp").forward(req, resp);*/
     }
 }

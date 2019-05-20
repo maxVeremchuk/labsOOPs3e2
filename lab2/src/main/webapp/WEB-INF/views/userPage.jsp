@@ -13,7 +13,6 @@
 
 
     </head>
-    <body>
     <c:if test="${success != null}">
         <h1>${success}</h1>
     </c:if>
@@ -114,7 +113,163 @@
     <br>
     <br>
     <br>
+    <form method="post" action='<spring:url value="/operation"/>' id="dateForm"
+          style="width:30%; margin:20px; padding:10px; border: 2px solid LightGray; border-radius:5px;">
+        Card:
+        <div class="form-row align-items-center">
+            <select name="card">
+                <c:forEach items="${sessionScope.cardAccountMap}" var="card">
+                    <option value="${card.key.cardNumber}">${card.key.cardNumber}</option>
+                </c:forEach>
+            </select>
+        </div>
+        Date from:
+        <div class="form-row align-items-center">
+            <input type="date" name="dateFrom"  class="form-control">
+        </div>
+        Date to:
+        <div class="form-row align-items-center">
+            <input type="date" name="dateTo"  class="form-control">
+        </div>
+        <input type="hidden" name="command" id="commandDate"/>
+        <input type="submit" id="submitDate" name="submit" value="Calculate" onclick="setCommand('Date', 'dateForm')"
+               class="btn btn-info">
+    </form>
+    <c:if test="${leftDate != null}">
 
+        <div id=container >
+            <canvas id='canvas' width='500' height='500' style="border: 1px solid black;"></canvas>
+        </div>
+        <script type="text/javascript" >
+            function draw(operations, blocksize, ld, rd) {
+                array = (operations).split(',');
+                var blockInOne = 250 / blocksize;
+                leftDate =ld
+                rightDate = rd
+                rects = []
+                var prevEnd = 250
+                for(var i = 0; i < array.length; i++){
+                    var height =  Math.abs(parseInt(array[i])) * blockInOne;
+                    if(parseInt(array[i]) < 0){
+                        rects.push({x:(i + 1)*10 + 2, y: prevEnd, w: 7, h: height});
+                    }
+                    else{
+                        rects.push({x:(i + 1)*10 + 2, y: prevEnd - height, w: 7, h: height});
+                    }
+                    prevEnd -= parseInt(array[i]) * blockInOne;
+
+                }
+                rects.push({x:0, y:0, w:0, h:0});
+                array.push("0");
+                var canvas = document.getElementById('canvas');
+                var context = canvas.getContext('2d');
+                drawColumns(canvas);
+                i = 0
+                while(r = rects[i]){
+
+
+
+                    context.beginPath();
+                    context.rect(r.x, r.y, r.w, r.h);
+                    if(parseInt(array[i]) > 0){
+                        context.fillStyle = "green";
+                    }
+                    else{
+                        context.fillStyle = "red";
+                    }
+                    context.fill();
+                    i++;
+
+                }
+
+
+
+                canvas.onmousemove = function(e) {
+                    var rect = this.getBoundingClientRect(),
+                        x = e.clientX - rect.left,
+                        y = e.clientY - rect.top,
+                        i = 0, r;
+
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    drawColumns(canvas);
+                    tooltip  = [];
+
+
+                    while(r = rects[i]){
+                        context.beginPath();
+                        context.rect(r.x, r.y, r.w, r.h);
+                        if(context.isPointInPath(x, y)){
+                            context.fillStyle = "blue";
+                            context.fill();
+                            tooltip.push({text:array[i] + '$', x: x - 20, y: y - 10});
+                        }
+                        else{
+                            if(parseInt(array[i]) > 0){
+                                context.fillStyle = "green";
+                            }
+                            else{
+                                context.fillStyle = "red";
+                            }
+
+                        }
+
+                        context.fill();
+                        i++;
+                    }
+                    i = 0
+
+                    while(t = tooltip[i]){
+                        context.beginPath();
+                        context.fillStyle = "black";
+                        context.font = "40px Georgia";
+                        context.fill();
+                        context.fillText(t.text, t.x, t.y);
+                        i++;
+                    }
+                    context.font = "20px Georgia";
+
+                }
+
+
+
+            }
+
+            function drawColumns(canvas) {
+                if (canvas.getContext) {
+                    var context = canvas.getContext('2d');
+
+                    for(var x=0.5;x<500;x+=10) {
+                        context.moveTo(x,0);
+                        context.lineTo(x,500);
+                    }
+
+                    for(var y=0.5; y<500; y+=10) {
+                        context.moveTo(0,y);
+                        context.lineTo(500,y);
+
+                    }
+                    context.moveTo(0,249);
+                    context.lineTo(500,249);
+                    context.moveTo(0,250);
+                    context.lineTo(500,250);
+                    context.moveTo(0,251);
+                    context.lineTo(500,251);
+                    context.strokeStyle='gray';
+                    context.stroke();
+
+                    context.fillStyle = "black";
+                    context.font = "11px Georgia";
+                    context.fillText(leftDate, 0, 495);
+                    context.fillText(rightDate, rects.length * 10 - 10, 495);
+
+
+
+
+                }
+            }
+            draw("${candles}", ${maxValue}, "${leftDate}", "${rightDate}");
+        </script>
+    </c:if>
     <ul class="list-group">
         <c:forEach items="${sessionScope.payments}" var="item">
             <li class="list-group-item">
